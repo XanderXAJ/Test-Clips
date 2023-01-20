@@ -100,7 +100,8 @@ func main() {
 	defer ffmpegCmd.Wait()
 	writePipe.Close() // Can now be closed as cmd has inherited the file descriptor
 
-	// Push ffmpeg's output to both the terminal and the output file using tee
+	// Push ffmpeg's output to both the terminal and the output file using tee,
+	// both providing immediate feedback and a log for later
 	teeCmd := exec.Command("tee", outputLogPath)
 	teeCmd.Stdin = readPipe
 	teeCmd.Stdout = os.Stdout
