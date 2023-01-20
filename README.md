@@ -15,7 +15,7 @@ go run . -h
 To perform one conversion, with some (example) options specified:
 
 ```shell
-go run . -i HaruhiSchool.mkv -fg 0 -p 12 -crf 10
+go run . -i HaruhiSchool.mkv -crf 10 -p 12 -fg 0
 ```
 
 Pro-tip: If you want to perform multiple conversions with one of the options changing, use your shell's `for` loop (`bash` shown):
