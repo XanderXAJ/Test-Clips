@@ -50,7 +50,7 @@ func Test_OutputPath(t *testing.T) {
 
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
-			got := outputPath(d.args)
+			got := d.args.outputPath()
 
 			if diff := cmp.Diff(d.want, got); diff != "" {
 				t.Error("unexpected output path (-want +got):", diff)

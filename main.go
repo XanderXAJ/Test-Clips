@@ -21,25 +21,29 @@ type flags struct {
 	film_grain int
 }
 
-func outputPath(args flags) string {
-	outputDir, inputFile := filepath.Split(args.input)
+func (f flags) outputPath() string {
+	outputDir, inputFile := filepath.Split(f.input)
 
 	// Figure out directory
-	if args.outputDir != "" {
-		outputDir = args.outputDir
+	if f.outputDir != "" {
+		outputDir = f.outputDir
 	}
 
 	// Figure out file name
 	inputExt := filepath.Ext(inputFile)
 	fileName := strings.Join([]string{
 		inputFile[:len(inputFile)-len(inputExt)],
-		fmt.Sprintf(".crf%v-p%v-g%v-fg%v", args.crf, args.preset, args.gop, args.film_grain),
+		fmt.Sprintf(".crf%v-p%v-g%v-fg%v", f.crf, f.preset, f.gop, f.film_grain),
 		".mkv",
 	}, "")
 	return filepath.Join(
 		outputDir,
 		fileName,
 	)
+}
+
+func (f flags) outputLogPath() string {
+	return f.outputPath() + ".log"
 }
 
 func main() {
@@ -64,9 +68,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	outputPath := outputPath(args)
-
-	outputLogPath := outputPath + ".log"
+	outputPath := args.outputPath()
+	outputLogPath := args.outputLogPath()
 
 	if _, err := os.Stat(outputLogPath); err == nil {
 		fmt.Printf("%v already exists; skipping\n", outputLogPath)
