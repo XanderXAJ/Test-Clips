@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 func conversionPossible(f flags) error {
@@ -58,11 +59,9 @@ func convertVideo(f flags) error {
 	)
 	ffmpegCmd.Stdout = writePipe
 	ffmpegCmd.Stderr = writePipe
-	err = ffmpegCmd.Start()
-	if err != nil {
-		log.Fatalln("Failed to start:", err)
+	if err := ffmpegCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start ffmpeg: %w", err)
 	}
-	defer ffmpegCmd.Wait()
 	writePipe.Close() // Can now be closed as cmd has inherited the file descriptor
 
 	// Push ffmpeg's output to both the terminal and the output file using tee,
@@ -71,5 +70,59 @@ func convertVideo(f flags) error {
 	teeCmd.Stdin = readPipe
 	teeCmd.Stdout = os.Stdout
 	teeCmd.Stderr = os.Stderr
-	return teeCmd.Run()
+
+	if err := teeCmd.Run(); err != nil {
+		log.Println("tee command failed")
+		conversionCleanup(f)
+		return err
+	}
+
+	if err := ffmpegCmd.Wait(); err != nil {
+		log.Println("ffmpeg command failed")
+		conversionCleanup(f)
+		return err
+	}
+
+	return nil
+}
+
+func conversionCleanup(f flags) error {
+	log.Println("cleaning up conversion")
+	// TODO move video file
+	if err := os.Rename(f.outputPath(), generateFailedPath(f.outputPath())); err != nil {
+		log.Println("Error during cleanup, continuing:", err)
+	}
+	// TODO move log file
+	if err := os.Rename(f.outputLogPath(), generateFailedPath(f.outputLogPath())); err != nil {
+		log.Println("Error during cleanup, continuing:", err)
+	}
+
+	return nil
+}
+
+func generateFailedPath(originalPath string) string {
+	originalExt := fullExt(originalPath)
+	insertionIndex := len(originalPath) - len(originalExt)
+	return strings.Join([]string{
+		originalPath[:insertionIndex],
+		".failed",
+		originalPath[insertionIndex:],
+	}, "")
+}
+
+// fullExt returns the full file name extension used by the path.
+// The full extension is the suffix beginning after the first dot in the final element of the path.
+// An empty string is returned if there is no dot.
+func fullExt(path string) string {
+	extIndex := -1
+	for i := len(path) - 1; i >= 0 && !os.IsPathSeparator(path[i]); i-- {
+		if path[i] == '.' {
+			extIndex = i
+		}
+	}
+	if extIndex != -1 {
+		return path[extIndex:]
+	} else {
+		return ""
+	}
 }
