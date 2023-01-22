@@ -52,17 +52,17 @@ func main() {
 	flag.IntVar(&args.gop, "g", 240, "Number of frames in Group Of Pictures")
 	flag.Parse()
 
-	if err := conversion_possible(args); err != nil {
+	if err := conversionPossible(args); err != nil {
 		fmt.Println("Conversion not possible:", err)
 		os.Exit(1)
 	}
 
-	if err := conversion_needed(args); err != nil {
+	if err := conversionNeeded(args); err != nil {
 		fmt.Println("Conversion not needed:", err)
 		os.Exit(2)
 	}
 
-	if err := convert_video(args); err != nil {
+	if err := convertVideo(args); err != nil {
 		fmt.Println("Error during conversion:", err)
 		os.Exit(3)
 	}

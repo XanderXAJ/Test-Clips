@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-func conversion_possible(f flags) error {
+func conversionPossible(f flags) error {
 	if f.input == "" {
 		return fmt.Errorf("no input provided -- use -i <path>")
 	}
@@ -24,7 +24,7 @@ func conversion_possible(f flags) error {
 	return nil
 }
 
-func conversion_needed(f flags) error {
+func conversionNeeded(f flags) error {
 	outputLogPath := f.outputLogPath()
 
 	if _, err := os.Stat(outputLogPath); errors.Is(err, os.ErrNotExist) { // Log file doesn't exist, conversion needed
@@ -36,7 +36,7 @@ func conversion_needed(f flags) error {
 	}
 }
 
-func convert_video(f flags) error {
+func convertVideo(f flags) error {
 	readPipe, writePipe, err := os.Pipe()
 	if err != nil {
 		return fmt.Errorf("unable to create pipe: %w", err)
