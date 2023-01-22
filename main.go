@@ -58,13 +58,8 @@ func main() {
 
 	fmt.Printf("%+v\n", args)
 
-	if args.input == "" {
-		fmt.Println("No input provided -- use -i <path>")
-		os.Exit(1)
-	}
-
-	if _, err := os.Stat(args.input); err != nil {
-		fmt.Println("Error finding input file; skipping:", err)
+	if err := conversion_possible(args); err != nil {
+		fmt.Println("Conversion not possible:", err)
 		os.Exit(1)
 	}
 
