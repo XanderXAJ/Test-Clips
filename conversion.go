@@ -42,6 +42,11 @@ func convert_video(f flags) error {
 		return fmt.Errorf("unable to create pipe: %w", err)
 	}
 
+	// Create output directory, otherwise tee will fail
+	if err := os.MkdirAll(f.outputDir, 0750); err != nil {
+		return fmt.Errorf("failed to create output directory %v: %w", f.outputDir, err)
+	}
+
 	ffmpegCmd := exec.Command("time", "-v", "ffmpeg", "-y",
 		"-i", f.input,
 		"-map", "0:V", "-c:v", "libsvtav1", "-pix_fmt", "yuv420p10le",
