@@ -3,7 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
+	"os/exec"
+	"strconv"
 )
 
 func conversion_possible(f flags) error {
@@ -33,6 +36,35 @@ func conversion_needed(f flags) error {
 	}
 }
 
-func convert_video(f flags) {
+func convert_video(f flags) error {
+	readPipe, writePipe, err := os.Pipe()
+	if err != nil {
+		return fmt.Errorf("unable to create pipe: %w", err)
+	}
 
+	ffmpegCmd := exec.Command("time", "-v", "ffmpeg", "-y",
+		"-i", f.input,
+		"-map", "0:V", "-c:v", "libsvtav1", "-pix_fmt", "yuv420p10le",
+		"-g", strconv.Itoa(f.gop),
+		"-crf", strconv.Itoa(f.crf),
+		"-svtav1-params", fmt.Sprintf("tune=0:film-grain=%v", f.film_grain),
+		"-preset", strconv.Itoa(f.preset),
+		f.outputPath(),
+	)
+	ffmpegCmd.Stdout = writePipe
+	ffmpegCmd.Stderr = writePipe
+	err = ffmpegCmd.Start()
+	if err != nil {
+		log.Fatalln("Failed to start:", err)
+	}
+	defer ffmpegCmd.Wait()
+	writePipe.Close() // Can now be closed as cmd has inherited the file descriptor
+
+	// Push ffmpeg's output to both the terminal and the output file using tee,
+	// both providing immediate feedback and a log for later
+	teeCmd := exec.Command("tee", f.outputLogPath())
+	teeCmd.Stdin = readPipe
+	teeCmd.Stdout = os.Stdout
+	teeCmd.Stderr = os.Stderr
+	return teeCmd.Run()
 }
