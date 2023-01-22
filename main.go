@@ -56,8 +56,6 @@ func main() {
 	flag.IntVar(&args.gop, "g", 240, "Number of frames in Group Of Pictures")
 	flag.Parse()
 
-	fmt.Printf("%+v\n", args)
-
 	if err := conversion_possible(args); err != nil {
 		fmt.Println("Conversion not possible:", err)
 		os.Exit(1)
