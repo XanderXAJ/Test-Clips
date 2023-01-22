@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -61,16 +60,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	outputPath := args.outputPath()
-	outputLogPath := args.outputLogPath()
-
-	if _, err := os.Stat(outputLogPath); err == nil {
-		fmt.Printf("%v already exists; skipping\n", outputLogPath)
+	if err := conversion_needed(args); err != nil {
+		fmt.Println("Conversion not needed:", err)
 		os.Exit(2)
-	} else if errors.Is(err, os.ErrNotExist) {
-		err = nil // Log file doesn't exist, continue
-	} else if err != nil {
-		log.Fatalln("Failure to create log file:", err)
 	}
 
 	readPipe, writePipe, err := os.Pipe()
@@ -85,7 +77,7 @@ func main() {
 		"-crf", strconv.Itoa(args.crf),
 		"-svtav1-params", fmt.Sprintf("tune=0:film-grain=%v", args.film_grain),
 		"-preset", strconv.Itoa(args.preset),
-		outputPath,
+		args.outputPath(),
 	)
 	ffmpegCmd.Stdout = writePipe
 	ffmpegCmd.Stderr = writePipe
@@ -98,7 +90,7 @@ func main() {
 
 	// Push ffmpeg's output to both the terminal and the output file using tee,
 	// both providing immediate feedback and a log for later
-	teeCmd := exec.Command("tee", outputLogPath)
+	teeCmd := exec.Command("tee", args.outputLogPath())
 	teeCmd.Stdin = readPipe
 	teeCmd.Stdout = os.Stdout
 	teeCmd.Stderr = os.Stderr

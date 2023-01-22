@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 )
@@ -20,8 +21,16 @@ func conversion_possible(f flags) error {
 	return nil
 }
 
-func conversion_needed(f flags) {
+func conversion_needed(f flags) error {
+	outputLogPath := f.outputLogPath()
 
+	if _, err := os.Stat(outputLogPath); errors.Is(err, os.ErrNotExist) { // Log file doesn't exist, conversion needed
+		return nil
+	} else if err != nil { // A different file error occurred
+		return err
+	} else { // No error, file exists
+		return fmt.Errorf("log already exists: %v", outputLogPath)
+	}
 }
 
 func convert_video(f flags) {
