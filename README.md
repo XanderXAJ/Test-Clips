@@ -48,6 +48,6 @@ video.failed.mkv
 video.failed.mkv.log
 ```
 
-Since Test Clips checks for the existence of successful files prior to working, simply re-run matrices of video parameters (as suggested above) to re-attempt failures while skipping previous successes.
+Since Test Clips checks for the existence of successful files prior to working, simply re-run matrices of video parameters (like the `for` loops suggested above) to re-attempt failures while skipping previous successes.
 
 If you retry processing and it fails again, the original failed files will be overwritten.
