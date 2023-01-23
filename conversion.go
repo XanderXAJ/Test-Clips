@@ -88,11 +88,11 @@ func convertVideo(f flags) error {
 
 func conversionCleanup(f flags) error {
 	log.Println("cleaning up conversion")
-	// TODO move video file
+	// Move video file
 	if err := os.Rename(f.outputPath(), generateFailedPath(f.outputPath())); err != nil {
 		log.Println("Error during cleanup, continuing:", err)
 	}
-	// TODO move log file
+	// Move log file
 	if err := os.Rename(f.outputLogPath(), generateFailedPath(f.outputLogPath())); err != nil {
 		log.Println("Error during cleanup, continuing:", err)
 	}
