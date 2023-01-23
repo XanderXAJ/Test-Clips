@@ -101,12 +101,18 @@ func conversionCleanup(f flags) error {
 }
 
 func generateFailedPath(originalPath string) string {
-	originalExt := fullExt(originalPath)
-	insertionIndex := len(originalPath) - len(originalExt)
+	return appendToFileName(originalPath, ".failed")
+}
+
+// appendtoFilename appends a string suffix to the filename, before any extension, defined by a dot.
+// For example, appending suffix "-suffix" to path "filename.ext" will result in "filename-suffix.ext".
+func appendToFileName(path string, suffix string) string {
+	originalExt := fullExt(path)
+	insertionIndex := len(path) - len(originalExt)
 	return strings.Join([]string{
-		originalPath[:insertionIndex],
-		".failed",
-		originalPath[insertionIndex:],
+		path[:insertionIndex],
+		suffix,
+		path[insertionIndex:],
 	}, "")
 }
 

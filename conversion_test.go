@@ -40,6 +40,38 @@ func Test_generateFailedPath(t *testing.T) {
 	}
 }
 
+func Test_appendtoFileName(t *testing.T) {
+	data := []struct {
+		name   string
+		path   string
+		suffix string
+		want   string
+	}{
+		{
+			"filename suffix",
+			"filename.ext",
+			"-suffix",
+			"filename-suffix.ext",
+		},
+		{
+			"prepend extension",
+			"filename.ext2",
+			".ext1",
+			"filename.ext1.ext2",
+		},
+	}
+
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			got := appendToFileName(d.path, d.suffix)
+
+			if diff := cmp.Diff(d.want, got); diff != "" {
+				t.Error("unexpected file name (-want +got)", diff)
+			}
+		})
+	}
+}
+
 func Test_fullExt(t *testing.T) {
 	data := []struct {
 		name string
