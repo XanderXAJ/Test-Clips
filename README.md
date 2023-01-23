@@ -29,3 +29,25 @@ Or in a matrix (`bash` shown) -- this example tests presets 4-12, every fourth C
 ```bash
 for crf in {10..63..4}; do for p in {4..12}; do for fg in 0 1 8 15; do go run . -o output -i HaruhiSchool.mkv -crf $crf -p $p -fg $fg; done; done; done
 ```
+
+## Failed conversions
+
+If processing fails or an interrupt signal (e.g. Ctrl+C on the CLI) is received, files will be renamed to allow easy identification of failed attempts and easy retries.
+
+For example, if an error occurs during video conversion (or it's interrupted), these files:
+
+```
+video.mkv
+video.mkv.log
+```
+
+Will automatically be renamed to:
+
+```
+video.failed.mkv
+video.failed.mkv.log
+```
+
+Since Test Clips checks for the existence of successful files prior to working, simply re-run matrices of video parameters (as suggested above) to re-attempt failures while skipping previous successes.
+
+If you retry processing and it fails again, the original failed files will be overwritten.

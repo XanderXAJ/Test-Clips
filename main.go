@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -62,7 +63,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	if err := convertVideo(args); err != nil {
+	if err := convertVideo(context.Background(), args); err != nil {
 		fmt.Println("Error during conversion:", err)
 		os.Exit(3)
 	}

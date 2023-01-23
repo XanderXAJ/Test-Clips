@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strconv"
 	"strings"
 )
@@ -38,7 +40,34 @@ func conversionNeeded(f flags) error {
 	}
 }
 
-func convertVideo(f flags) error {
+func convertVideo(ctx context.Context, f flags) error {
+	// Allow conversion to be stopped via interrupt, e.g. Ctrl-C on CLI
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
+	defer stop()
+
+	var err error
+	done := make(chan struct{}, 1)
+	go func() {
+		err = runVideoConversion(ctx, f)
+		close(done)
+	}()
+
+	select {
+	case <-done: // Video conversion completed, potentially with err
+		break
+	case <-ctx.Done(): // Interrupt signal received
+		err = ctx.Err()
+		break
+	}
+
+	stop() // Restore original signal processing
+	if err != nil {
+		cleanupConversion(f)
+	}
+	return err
+}
+
+func runVideoConversion(ctx context.Context, f flags) error {
 	readPipe, writePipe, err := os.Pipe()
 	if err != nil {
 		return fmt.Errorf("unable to create pipe: %w", err)
@@ -49,7 +78,7 @@ func convertVideo(f flags) error {
 		return fmt.Errorf("failed to create output directory %v: %w", f.outputDir, err)
 	}
 
-	ffmpegCmd := exec.Command("time", "-v", "ffmpeg", "-y",
+	ffmpegCmd := exec.CommandContext(ctx, "time", "-v", "ffmpeg", "-y",
 		"-i", f.input,
 		"-map", "0:V", "-c:v", "libsvtav1", "-pix_fmt", "yuv420p10le",
 		"-g", strconv.Itoa(f.gop),
@@ -67,27 +96,23 @@ func convertVideo(f flags) error {
 
 	// Push ffmpeg's output to both the terminal and the output file using tee,
 	// both providing immediate feedback and a log for later
-	teeCmd := exec.Command("tee", f.outputLogPath())
+	teeCmd := exec.CommandContext(ctx, "tee", f.outputLogPath())
 	teeCmd.Stdin = readPipe
 	teeCmd.Stdout = os.Stdout
 	teeCmd.Stderr = os.Stderr
 
 	if err := teeCmd.Run(); err != nil {
-		log.Println("tee command failed")
-		conversionCleanup(f)
 		return err
 	}
 
 	if err := ffmpegCmd.Wait(); err != nil {
-		log.Println("ffmpeg command failed")
-		conversionCleanup(f)
 		return err
 	}
 
 	return nil
 }
 
-func conversionCleanup(f flags) error {
+func cleanupConversion(f flags) error {
 	log.Println("cleaning up conversion")
 	// Move video file
 	if err := os.Rename(f.outputPath(), generateFailedPath(f.outputPath())); err != nil {
