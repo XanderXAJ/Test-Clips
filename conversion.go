@@ -20,6 +20,7 @@ func conversionPossible(f flags) error {
 		// will be caught by FFmpeg later if conversion fails, the risk is acceptable.
 		// Additionally, we wouldn't normally anticipate video files suddenly being created
 		// just before they're converted, although I'm sure it could happen in someone's use case eventually.
+		// See: https://xkcd.com/1172/
 		return fmt.Errorf("error finding input file: %w", err)
 	}
 	return nil
