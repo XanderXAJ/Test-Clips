@@ -101,11 +101,11 @@ func runVideoConversion(ctx context.Context, f flags) error {
 	teeCmd.Stderr = os.Stderr
 
 	if err := teeCmd.Run(); err != nil {
-		return err
+		return fmt.Errorf("tee command failed: %w", err)
 	}
 
 	if err := ffmpegCmd.Wait(); err != nil {
-		return err
+		return fmt.Errorf("ffmpeg command failed: %w", err)
 	}
 
 	return nil
