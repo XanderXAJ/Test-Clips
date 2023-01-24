@@ -62,7 +62,7 @@ func convertVideo(ctx context.Context, f flags) error {
 
 	stop() // Restore original signal processing
 	if err != nil {
-		cleanupConversion(f)
+		cleanupFailedConversion(f)
 	}
 	return err
 }
@@ -112,8 +112,8 @@ func runVideoConversion(ctx context.Context, f flags) error {
 	return nil
 }
 
-func cleanupConversion(f flags) error {
-	log.Println("cleaning up conversion")
+func cleanupFailedConversion(f flags) error {
+	log.Println("Cleaning up conversion")
 	// Move video file
 	if err := os.Rename(f.outputVideoPath(), generateFailedPath(f.outputVideoPath())); err != nil {
 		log.Println("Error during cleanup, continuing:", err)
