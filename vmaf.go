@@ -25,13 +25,13 @@ func vmafPossible(f flags) error {
 
 func vmafNeeded(f flags) error {
 	path := f.outputVmafPath()
-	if res, err := os.Stat(path); res != nil {
+	if _, err := os.Stat(path); err != nil {
 		// No error, file exists
 		return fmt.Errorf("file already exists: %v", path)
 	} else if errors.Is(err, os.ErrNotExist) {
 		// File doesn't exist, we're good to go
 		return nil
-		} else {
+	} else {
 		// Another file error occurred
 		return err
 	}
