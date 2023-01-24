@@ -111,8 +111,8 @@ func runVideoConversion(ctx context.Context, f flags) error {
 	return nil
 }
 
-func cleanupFailedConversion(f flags) error {
-	log.Println("Cleaning up conversion")
+func cleanupFailedConversion(f flags) {
+	log.Println("Cleaning up failed conversion")
 	// Move video file
 	if err := os.Rename(f.outputVideoPath(), generateFailedPath(f.outputVideoPath())); err != nil {
 		log.Println("Error during cleanup, continuing:", err)
@@ -121,6 +121,4 @@ func cleanupFailedConversion(f flags) error {
 	if err := os.Rename(f.outputLogPath(), generateFailedPath(f.outputLogPath())); err != nil {
 		log.Println("Error during cleanup, continuing:", err)
 	}
-
-	return nil
 }
