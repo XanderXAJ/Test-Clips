@@ -85,7 +85,7 @@ func runVideoConversion(ctx context.Context, f flags) error {
 		"-crf", strconv.Itoa(f.crf),
 		"-svtav1-params", fmt.Sprintf("tune=0:film-grain=%v", f.film_grain),
 		"-preset", strconv.Itoa(f.preset),
-		f.outputPath(),
+		f.outputVideoPath(),
 	)
 	ffmpegCmd.Stdout = writePipe
 	ffmpegCmd.Stderr = writePipe
@@ -115,7 +115,7 @@ func runVideoConversion(ctx context.Context, f flags) error {
 func cleanupConversion(f flags) error {
 	log.Println("cleaning up conversion")
 	// Move video file
-	if err := os.Rename(f.outputPath(), generateFailedPath(f.outputPath())); err != nil {
+	if err := os.Rename(f.outputVideoPath(), generateFailedPath(f.outputVideoPath())); err != nil {
 		log.Println("Error during cleanup, continuing:", err)
 	}
 	// Move log file

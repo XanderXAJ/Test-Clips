@@ -18,7 +18,7 @@ type flags struct {
 	film_grain int
 }
 
-func (f flags) outputPath() string {
+func (f flags) outputVideoPath() string {
 	outputDir, inputFile := filepath.Split(f.input)
 
 	// Figure out directory
@@ -40,7 +40,7 @@ func (f flags) outputPath() string {
 }
 
 func (f flags) outputLogPath() string {
-	return f.outputPath() + ".log"
+	return f.outputVideoPath() + ".log"
 }
 
 func main() {
