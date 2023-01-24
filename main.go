@@ -43,6 +43,10 @@ func (f flags) outputLogPath() string {
 	return f.outputVideoPath() + ".log"
 }
 
+func (f flags) outputVmafPath() string {
+	return f.outputVideoPath() + ".vmaf.json"
+}
+
 func main() {
 	var args flags
 	flag.StringVar(&args.input, "i", "", "Input")
@@ -65,6 +69,21 @@ func main() {
 
 	if err := convertVideo(context.Background(), args); err != nil {
 		fmt.Println("Error during conversion:", err)
+		os.Exit(3)
+	}
+
+	if err := vmafPossible(args); err != nil {
+		fmt.Println("VMAF analysis not possible:", err)
+		os.Exit(1)
+	}
+
+	if err := vmafNeeded(args); err != nil {
+		fmt.Println("VMAF analysis not needed:", err)
+		os.Exit(2)
+	}
+
+	if err := performVMAFAnalysis(args); err != nil {
+		fmt.Println("Error during VMAF analysis:", err)
 		os.Exit(3)
 	}
 }
