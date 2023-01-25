@@ -7,8 +7,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"os/signal"
 	"strconv"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 func conversionPossible(f flags) error {
@@ -40,26 +41,7 @@ func conversionNeeded(f flags) error {
 }
 
 func convertVideo(ctx context.Context, f flags) error {
-	// Allow conversion to be stopped via interrupt, e.g. Ctrl-C on CLI
-	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
-	defer stop()
-
-	var err error
-	done := make(chan struct{}, 1)
-	go func() {
-		err = runVideoConversion(ctx, f)
-		close(done)
-	}()
-
-	select {
-	case <-done: // Video conversion completed, potentially with err
-		break
-	case <-ctx.Done(): // Interrupt signal received
-		err = ctx.Err()
-		break
-	}
-
-	stop() // Restore original signal processing
+	err := runVideoConversion(ctx, f)
 	if err != nil {
 		cleanupFailedConversion(f)
 	}
@@ -67,7 +49,7 @@ func convertVideo(ctx context.Context, f flags) error {
 }
 
 func runVideoConversion(ctx context.Context, f flags) error {
-	readPipe, writePipe, err := os.Pipe()
+	_, writePipe, err := os.Pipe()
 	if err != nil {
 		return fmt.Errorf("unable to create pipe: %w", err)
 	}
@@ -77,7 +59,7 @@ func runVideoConversion(ctx context.Context, f flags) error {
 		return fmt.Errorf("failed to create output directory %v: %w", f.outputDir, err)
 	}
 
-	ffmpegCmd := exec.CommandContext(ctx, "time", "-v", "ffmpeg", "-y",
+	ffmpegCmd := exec.Command("time", "-v", "ffmpeg", "-y",
 		"-i", f.input,
 		"-map", "0:V", "-c:v", "libsvtav1", "-pix_fmt", "yuv420p10le",
 		"-g", strconv.Itoa(f.gop),
@@ -94,21 +76,24 @@ func runVideoConversion(ctx context.Context, f flags) error {
 	writePipe.Close() // Can now be closed as cmd has inherited the file descriptor
 
 	// Push ffmpeg's output to both the terminal and the output file using tee,
-	// both providing immediate feedback and a log for later
-	teeCmd := exec.CommandContext(ctx, "tee", f.outputLogPath())
-	teeCmd.Stdin = readPipe
+	// both providing immediate feedback and a log for later.
+	// Explicitly do not tie tee to the context, since it will terminate when its pipes are closed.
+	teeCmd := exec.Command("tee", f.outputLogPath())
+	// teeCmd.Stdin = readPipe
 	teeCmd.Stdout = os.Stdout
 	teeCmd.Stderr = os.Stderr
-
-	if err := teeCmd.Run(); err != nil {
-		return fmt.Errorf("tee command failed: %w", err)
+	if err := teeCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start tee: %w", err)
 	}
 
-	if err := ffmpegCmd.Wait(); err != nil {
-		return fmt.Errorf("ffmpeg command failed: %w", err)
+	var result error
+	if err := interruptibleWait(ffmpegCmd, os.Interrupt); err != nil {
+		result = multierror.Append(result, fmt.Errorf("ffmpeg command failed: %w", err))
 	}
-
-	return nil
+	if err := teeCmd.Wait(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("tee command failed: %w", err))
+	}
+	return result
 }
 
 func cleanupFailedConversion(f flags) {

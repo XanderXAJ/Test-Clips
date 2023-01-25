@@ -7,8 +7,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"os/signal"
 	"runtime"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 func vmafPossible(f flags) error {
@@ -42,25 +43,7 @@ func vmafNeeded(f flags) error {
 }
 
 func performVMAFAnalysis(ctx context.Context, f flags) error {
-	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
-	defer stop()
-
-	var err error
-	done := make(chan struct{}, 1)
-	go func() {
-		err = executeVMAF(ctx, f)
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		break
-	case <-ctx.Done():
-		err = ctx.Err()
-		break
-	}
-
-	stop()
+	err := executeVMAF(ctx, f)
 	if err != nil {
 		cleanupFailedVMAFAnalysis(f)
 	}
@@ -84,7 +67,7 @@ func executeVMAF(ctx context.Context, f flags) error {
 	[distorted][reference]libvmaf=log_fmt=json:log_path=%v:n_threads=%v:feature='name=psnr|name=float_ssim|name=float_ms_ssim|name=float_ansnr'
 	`, f.outputVMAFPath(), runtime.NumCPU())
 
-	vmafCmd := exec.CommandContext(ctx, "time", "-v", "ffmpeg",
+	vmafCmd := exec.Command("time", "-v", "ffmpeg",
 		"-i", f.input,
 		"-i", f.outputVideoPath(),
 		"-lavfi", vmafComplexFilter,
@@ -98,21 +81,26 @@ func executeVMAF(ctx context.Context, f flags) error {
 	writePipe.Close() // Can now be closed as cmd has inherited the file descriptor. If we don't do this, go won't close after all tasks are complete.
 
 	// Push ffmpeg's output to both the terminal and the output file using tee,
-	// both providing immediate feedback and a log for later
-	teeCmd := exec.CommandContext(ctx, "tee", f.outputVMAFLogPath())
+	// both providing immediate feedback and a log for later.
+	// Explicitly do not tie tee to the context, since it will terminate when its pipes are closed.
+	teeCmd := exec.Command("tee", f.outputVMAFLogPath())
 	teeCmd.Stdin = readPipe
 	teeCmd.Stdout = os.Stdout
 	teeCmd.Stderr = os.Stderr
-
-	if err := teeCmd.Run(); err != nil {
-		return fmt.Errorf("tee command failed: %w", err)
+	if err := teeCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start tee: %w", err)
 	}
 
-	if err := vmafCmd.Wait(); err != nil {
-		return fmt.Errorf("VMAF command failed: %w", err)
+	var result error
+	if err := interruptibleWait(vmafCmd, os.Interrupt); err != nil {
+		result = multierror.Append(result, fmt.Errorf("VMAF command failed: %w", err))
 	}
-
-	return nil
+	log.Println("VMAF ended")
+	if err := teeCmd.Wait(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("tee command failed: %w", err))
+	}
+	log.Println("tee ended")
+	return result
 }
 
 func cleanupFailedVMAFAnalysis(f flags) {
