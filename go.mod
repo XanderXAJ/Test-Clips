@@ -1,4 +1,4 @@
-module test-clips
+module github.com/xanderxaj/test-clips
 
 go 1.19
 
