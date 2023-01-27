@@ -49,7 +49,7 @@ func convertVideo(ctx context.Context, f flags) error {
 }
 
 func runVideoConversion(ctx context.Context, f flags) error {
-	_, writePipe, err := os.Pipe()
+	readPipe, writePipe, err := os.Pipe()
 	if err != nil {
 		return fmt.Errorf("unable to create pipe: %w", err)
 	}
@@ -79,7 +79,7 @@ func runVideoConversion(ctx context.Context, f flags) error {
 	// both providing immediate feedback and a log for later.
 	// Explicitly do not tie tee to the context, since it will terminate when its pipes are closed.
 	teeCmd := exec.Command("tee", f.outputLogPath())
-	// teeCmd.Stdin = readPipe
+	teeCmd.Stdin = readPipe
 	teeCmd.Stdout = os.Stdout
 	teeCmd.Stderr = os.Stderr
 	if err := teeCmd.Start(); err != nil {
