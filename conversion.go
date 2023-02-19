@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"syscall"
 
 	"github.com/hashicorp/go-multierror"
 )
@@ -29,7 +30,7 @@ func conversionPossible(f flags) error {
 }
 
 func conversionNeeded(f flags) error {
-	outputLogPath := f.outputLogPath()
+	outputLogPath := f.outputVideoLogPath()
 
 	if _, err := os.Stat(outputLogPath); errors.Is(err, os.ErrNotExist) { // Log file doesn't exist, conversion needed
 		return nil
@@ -78,7 +79,7 @@ func runVideoConversion(ctx context.Context, f flags) error {
 	// Push ffmpeg's output to both the terminal and the output file using tee,
 	// both providing immediate feedback and a log for later.
 	// Explicitly do not tie tee to the context, since it will terminate when its pipes are closed.
-	teeCmd := exec.Command("tee", f.outputLogPath())
+	teeCmd := exec.Command("tee", f.outputVideoLogPath())
 	teeCmd.Stdin = readPipe
 	teeCmd.Stdout = os.Stdout
 	teeCmd.Stderr = os.Stderr
@@ -93,6 +94,13 @@ func runVideoConversion(ctx context.Context, f flags) error {
 	if err := teeCmd.Wait(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("tee command failed: %w", err))
 	}
+
+	if usage, ok := ffmpegCmd.ProcessState.SysUsage().(*syscall.Rusage); ok {
+		err := writeProcessRusageStats(usage, f)
+		if err != nil {
+			result = multierror.Append(result, fmt.Errorf("failed to write process Rusage stats: %w", err))
+		}
+	}
 	return result
 }
 
@@ -103,7 +111,11 @@ func cleanupFailedConversion(f flags) {
 		log.Println("Error during cleanup, continuing:", err)
 	}
 	// Move log file
-	if err := os.Rename(f.outputLogPath(), generateFailedPath(f.outputLogPath())); err != nil {
+	if err := os.Rename(f.outputVideoLogPath(), generateFailedPath(f.outputVideoLogPath())); err != nil {
 		log.Println("Error during cleanup, continuing:", err)
+	}
+	// Move process stats file
+	if err := os.Rename(f.outputVideoProcessStatsPath(), generateFailedPath(f.outputVideoProcessStatsPath())); err != nil {
+		log.Println("Error during cleanup, continuing: ", err)
 	}
 }

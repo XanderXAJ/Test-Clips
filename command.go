@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"os/signal"
+	"syscall"
 )
 
 func interruptibleWait(cmd *exec.Cmd, interrupt os.Signal) error {
@@ -47,4 +49,14 @@ func interruptibleWait(cmd *exec.Cmd, interrupt os.Signal) error {
 		return interruptErr
 	}
 	return waitErr
+}
+
+func writeProcessRusageStats(u *syscall.Rusage, f flags) error {
+	file, err := os.Create(f.outputVideoProcessStatsPath())
+	if err != nil {
+		return err
+	}
+
+	err = json.NewEncoder(file).Encode(u)
+	return err
 }

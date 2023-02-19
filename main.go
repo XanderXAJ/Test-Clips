@@ -39,8 +39,12 @@ func (f flags) outputVideoPath() string {
 	)
 }
 
-func (f flags) outputLogPath() string {
+func (f flags) outputVideoLogPath() string {
 	return f.outputVideoPath() + ".log"
+}
+
+func (f flags) outputVideoProcessStatsPath() string {
+	return f.outputVideoPath() + ".stats.json"
 }
 
 func (f flags) outputVMAFPath() string {
