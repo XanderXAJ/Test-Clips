@@ -1,4 +1,4 @@
-package main
+package conversion
 
 import (
 	"context"
@@ -11,13 +11,16 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/xanderxaj/test-clips/internal/command"
+	"github.com/xanderxaj/test-clips/internal/file"
+	"github.com/xanderxaj/test-clips/internal/job"
 )
 
-func conversionPossible(f flags) error {
-	if f.input == "" {
+func ConversionPossible(f job.Flags) error {
+	if f.Input == "" {
 		return fmt.Errorf("no input provided -- use -i <path>")
 	}
-	if _, err := os.Stat(f.input); err != nil {
+	if _, err := os.Stat(f.Input); err != nil {
 		// There's a race condition here since we're checking for the existence of the file
 		// before using it. However, since we're just trying to be helpful, and the error
 		// will be caught by FFmpeg later if conversion fails, the risk is acceptable.
@@ -29,8 +32,8 @@ func conversionPossible(f flags) error {
 	return nil
 }
 
-func conversionNeeded(f flags) error {
-	outputLogPath := f.outputVideoLogPath()
+func ConversionNeeded(f job.Flags) error {
+	outputLogPath := f.OutputVideoLogPath()
 
 	if _, err := os.Stat(outputLogPath); errors.Is(err, os.ErrNotExist) { // Log file doesn't exist, conversion needed
 		return nil
@@ -41,7 +44,7 @@ func conversionNeeded(f flags) error {
 	}
 }
 
-func convertVideo(ctx context.Context, f flags) error {
+func ConvertVideo(ctx context.Context, f job.Flags) error {
 	err := runVideoConversion(ctx, f)
 	if err != nil {
 		cleanupFailedConversion(f)
@@ -49,25 +52,25 @@ func convertVideo(ctx context.Context, f flags) error {
 	return err
 }
 
-func runVideoConversion(ctx context.Context, f flags) error {
+func runVideoConversion(ctx context.Context, f job.Flags) error {
 	readPipe, writePipe, err := os.Pipe()
 	if err != nil {
 		return fmt.Errorf("unable to create pipe: %w", err)
 	}
 
 	// Create output directory, otherwise tee will fail
-	if err := os.MkdirAll(f.outputDir, 0750); err != nil {
-		return fmt.Errorf("failed to create output directory %v: %w", f.outputDir, err)
+	if err := os.MkdirAll(f.OutputDir, 0750); err != nil {
+		return fmt.Errorf("failed to create output directory %v: %w", f.OutputDir, err)
 	}
 
 	ffmpegCmd := exec.Command("time", "-v", "ffmpeg", "-y",
-		"-i", f.input,
+		"-i", f.Input,
 		"-map", "0:V", "-c:v", "libsvtav1", "-pix_fmt", "yuv420p10le",
-		"-g", strconv.Itoa(f.gop),
-		"-crf", strconv.Itoa(f.crf),
-		"-svtav1-params", fmt.Sprintf("tune=0:film-grain=%v", f.film_grain),
-		"-preset", strconv.Itoa(f.preset),
-		f.outputVideoPath(),
+		"-g", strconv.Itoa(f.GOP),
+		"-crf", strconv.Itoa(f.CRF),
+		"-svtav1-params", fmt.Sprintf("tune=0:film-grain=%v", f.Film_grain),
+		"-preset", strconv.Itoa(f.Preset),
+		f.OutputVideoPath(),
 	)
 	ffmpegCmd.Stdout = writePipe
 	ffmpegCmd.Stderr = writePipe
@@ -79,7 +82,7 @@ func runVideoConversion(ctx context.Context, f flags) error {
 	// Push ffmpeg's output to both the terminal and the output file using tee,
 	// both providing immediate feedback and a log for later.
 	// Explicitly do not tie tee to the context, since it will terminate when its pipes are closed.
-	teeCmd := exec.Command("tee", f.outputVideoLogPath())
+	teeCmd := exec.Command("tee", f.OutputVideoLogPath())
 	teeCmd.Stdin = readPipe
 	teeCmd.Stdout = os.Stdout
 	teeCmd.Stderr = os.Stderr
@@ -88,7 +91,7 @@ func runVideoConversion(ctx context.Context, f flags) error {
 	}
 
 	var result error
-	if err := interruptibleWait(ffmpegCmd, os.Interrupt); err != nil {
+	if err := command.InterruptibleWait(ffmpegCmd, os.Interrupt); err != nil {
 		result = multierror.Append(result, fmt.Errorf("ffmpeg command failed: %w", err))
 	}
 	if err := teeCmd.Wait(); err != nil {
@@ -96,7 +99,7 @@ func runVideoConversion(ctx context.Context, f flags) error {
 	}
 
 	if usage, ok := ffmpegCmd.ProcessState.SysUsage().(*syscall.Rusage); ok {
-		err := writeProcessRusageStats(usage, f)
+		err := command.WriteProcessRusageStats(usage, f)
 		if err != nil {
 			result = multierror.Append(result, fmt.Errorf("failed to write process Rusage stats: %w", err))
 		}
@@ -104,18 +107,18 @@ func runVideoConversion(ctx context.Context, f flags) error {
 	return result
 }
 
-func cleanupFailedConversion(f flags) {
+func cleanupFailedConversion(f job.Flags) {
 	log.Println("Cleaning up failed conversion")
 	// Move video file
-	if err := os.Rename(f.outputVideoPath(), generateFailedPath(f.outputVideoPath())); err != nil {
+	if err := os.Rename(f.OutputVideoPath(), file.GenerateFailedPath(f.OutputVideoPath())); err != nil {
 		log.Println("Error during cleanup, continuing:", err)
 	}
 	// Move log file
-	if err := os.Rename(f.outputVideoLogPath(), generateFailedPath(f.outputVideoLogPath())); err != nil {
+	if err := os.Rename(f.OutputVideoLogPath(), file.GenerateFailedPath(f.OutputVideoLogPath())); err != nil {
 		log.Println("Error during cleanup, continuing:", err)
 	}
 	// Move process stats file
-	if err := os.Rename(f.outputVideoProcessStatsPath(), generateFailedPath(f.outputVideoProcessStatsPath())); err != nil {
+	if err := os.Rename(f.OutputVideoProcessStatsPath(), file.GenerateFailedPath(f.OutputVideoProcessStatsPath())); err != nil {
 		log.Println("Error during cleanup, continuing: ", err)
 	}
 }

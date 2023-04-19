@@ -1,14 +1,14 @@
-package main
+package file
 
 import (
 	"os"
 	"strings"
 )
 
-// generateFailedPath inserts an indicator in to originalPath to indicate failure.
-// The intention is that moving the file located at originalPath to the path returned by generateFailedPath would indicate
+// GenerateFailedPath inserts an indicator in to originalPath to indicate failure.
+// The intention is that moving the file located at originalPath to the path returned by GenerateFailedPath would indicate
 // to a user that processing for that file has failed without needing to inspect the file or command output.
-func generateFailedPath(originalPath string) string {
+func GenerateFailedPath(originalPath string) string {
 	return appendToFileName(originalPath, ".failed")
 }
 

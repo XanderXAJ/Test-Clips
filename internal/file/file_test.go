@@ -1,4 +1,4 @@
-package main
+package file
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func Test_generateFailedPath(t *testing.T) {
+func Test_GenerateFailedPath(t *testing.T) {
 	data := []struct {
 		name         string
 		originalPath string
@@ -31,7 +31,7 @@ func Test_generateFailedPath(t *testing.T) {
 
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
-			got := generateFailedPath(d.originalPath)
+			got := GenerateFailedPath(d.originalPath)
 
 			if diff := cmp.Diff(d.want, got); diff != "" {
 				t.Error("unexpected failed file name (-want +got):", diff)

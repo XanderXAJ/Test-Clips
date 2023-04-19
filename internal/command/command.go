@@ -1,4 +1,4 @@
-package main
+package command
 
 import (
 	"encoding/json"
@@ -8,9 +8,11 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+
+	"github.com/xanderxaj/test-clips/internal/job"
 )
 
-func interruptibleWait(cmd *exec.Cmd, interrupt os.Signal) error {
+func InterruptibleWait(cmd *exec.Cmd, interrupt os.Signal) error {
 	if cmd.Process == nil {
 		return fmt.Errorf("interruptible received nil cmd.Process: has Start() been called?")
 	}
@@ -51,8 +53,8 @@ func interruptibleWait(cmd *exec.Cmd, interrupt os.Signal) error {
 	return waitErr
 }
 
-func writeProcessRusageStats(u *syscall.Rusage, f flags) error {
-	file, err := os.Create(f.outputVideoProcessStatsPath())
+func WriteProcessRusageStats(u *syscall.Rusage, f job.Flags) error {
+	file, err := os.Create(f.OutputVideoProcessStatsPath())
 	if err != nil {
 		return err
 	}
