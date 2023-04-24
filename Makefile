@@ -1,14 +1,19 @@
 .DEFAULT: build
 .PHONY: build run
 
-build:
+build: build-tc build-tcb
+
+build-tc:
 	go build ./cmd/test-clips
 
-build-debug:
+build-debug-tc:
 	go build -gcflags="all=-N -l" -o test-clips-debug ./cmd/test-clips
 
-debug: build-debug
+debug-tc: build-debug-tc
 	dlv exec ./test-clips-debug
+
+build-tcb:
+	go build ./cmd/tcb
 
 test:
 	go test ./...
