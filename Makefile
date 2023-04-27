@@ -1,5 +1,5 @@
 .DEFAULT: build
-.PHONY: build run
+.PHONY: build test mutation
 
 build: build-tc build-tcb
 
@@ -17,3 +17,6 @@ build-tcb:
 
 test:
 	go test ./...
+
+mutation:
+	go test -v -tags=mutation
